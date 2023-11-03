@@ -1,0 +1,154 @@
+Field Number,Field Description,Field Type,Comments
+1,ID Number,String,SURE Voter ID number
+2,Title,String,
+3,Last Name,String,
+4,First Name,String,
+5,Middle Name,String,
+6,Suffix,String,
+7,Gender,String,F=Female M=Male U=Unknown
+8,DOB,Date,MM/DD/YYYY
+9,Registration Date,Date,MM/DD/YYYY
+10,Voter Status,String,A=Active I=Inactive
+11,Status Change Date,Date,MM/DD/YYYY
+12,Party Code,String,See Political Party Code documentation
+13,House Number,String,Residential
+14,House Number Suffix,String,Residential
+15,Street Name,String,Residential
+16,Apartment Number,String,Residential
+17,Address Line 2,String,Residential
+18,City,String,Residential
+19,State,String,Residential
+20,Zip,String,Residential
+21,Mail Address 1,String,Residential
+22,Mail Address 2,String,Residential
+26,Mail City,String,Non-Residential
+27,Mail State,String,Non-Residential
+28,Mail Zip,String,Non-Residential
+26,Last Vote Date,Date,MM/DD/YYYY
+27,Precint Code,String,
+28,Precint Split ID,String,
+29,Date Last Changed,Date,MM/DD/YYYY
+30,Custom Data 1,String,Legacy system ID number
+31,District 1,String,See Zone Code and Zone Type documentation for District 1 to District 40
+32,District 2,String,
+33,District 3,String,
+34,District 4,String,
+35,District 5,String,
+36,District 6,String,
+37,District 7,String,
+38,District 8,String,
+39,District 9,String,
+40,District 10,String,
+41,District 11,String,
+42,District 12,String,
+43,District 13,String,
+44,District 14,String,
+45,District 15,String,
+46,District 16,String,
+47,District 17,String,
+48,District 18,String,
+49,District 19,String,
+50,District 20,String,
+51,District 21,String,
+52,District 22,String,
+53,District 23,String,
+54,District 24,String,
+55,District 25,String,
+56,District 26,String,
+57,District 27,String,
+58,District 28,String,
+59,District 29,String,
+60,District 30,String,
+61,District 31,String,
+62,District 32,String,
+63,District 33,String,
+64,District 34,String,
+65,District 35,String,
+66,District 36,String,
+67,District 37,String,
+68,District 38,String,
+69,District 39,String,
+70,District 40,String,
+71,Election 1 Vote Method,String,See Election Map documentation for Election 1 to Election 40. AP=At Polls AB=Absentee MB = Mail-In Ballot P=Provisional
+72,Election 1 Party,String,See Political Party Code
+73,Election 2 Vote Method,String,
+74,Election 2 Party,String,See Political Party Code documentation
+75,Election 3 Vote Method,String,
+76,Election 3 Party,String,See Political Party Code documentation
+77,Election 4 Vote Method,String,
+78,Election 4 Party,String,See Political Party Code documentation
+79,Election 5 Vote Method,String,
+80,Election 5 Party,String,See Political Party Code documentation
+81,Election 6 Vote Method,String,
+82,Election 6 Party,String,See Political Party Code documentation
+83,Election 7 Vote Method,String,
+84,Election 7 Party,String,See Political Party Code documentation
+85,Election 8 Vote Method,String,
+86,Election 8 Party,String,See Political Party Code documentation
+87,Election 9 Vote Method,String,
+88,Election 9 Party,String,See Political Party Code documentation
+89,Election 10 Vote Method,String,
+90,Election 10 Party,String,See Political Party Code documentation
+91,Election 11 Vote Method,String,
+92,Election 11 Party,String,See Political Party Code documentation
+93,Election 12 Vote Method,String,
+94,Election 12 Party,String,See Political Party Code documentation
+95,Election 13 Vote Method,String,
+96,Election 13 Party,String,See Political Party Code documentation
+97,Election 14 Vote Method,String,
+98,Election 14 Party,String,See Political Party Code documentation
+99,Election 15 Vote Method,String,
+100,Election 15 Party,String,See Political Party Code documentation
+101,Election 16 Vote Method,String,
+102,Election 16 Party,String,See Political Party Code documentation
+103,Election 17 Vote Method,String,
+104,Election 17 Party,String,See Political Party Code documentation
+105,Election 18 Vote Method,String,
+106,Election 18 Party,String,See Political Party Code documentation
+107,Election 19 Vote Method,String,
+108,Election 19 Party,String,See Political Party Code documentation
+109,Election 20 Vote Method,String,
+110,Election 20 Party,String,See Political Party Code documentation
+111,Election 21 Vote Method,String,
+112,Election 21 Party,String,See Political Party Code documentation
+113,Election 22 Vote Method,String,
+114,Election 22 Party,String,See Political Party Code documentation
+115,Election 23 Vote Method,String,
+116,Election 23 Party,String,See Political Party Code documentation
+117,Election 24 Vote Method,String,
+118,Election 24 Party,String,See Political Party Code documentation
+119,Election 25 Vote Method,String,
+120,Election 25 Party,String,See Political Party Code documentation
+121,Election 26 Vote Method,String,
+122,Election 26 Party,String,See Political Party Code documentation
+123,Election 27 Vote Method,String,
+124,Election 27 Party,String,See Political Party Code documentation
+125,Election 28 Vote Method,String,
+126,Election 28 Party,String,See Political Party Code documentation
+127,Election 29 Vote Method,String,
+128,Election 29 Party,String,See Political Party Code documentation
+129,Election 30 Vote Method,String,
+130,Election 30 Party,String,See Political Party Code documentation
+131,Election 31 Vote Method,String,
+132,Election 31 Party,String,See Political Party Code documentation
+133,Election 32 Vote Method,String,
+134,Election 32 Party,String,See Political Party Code documentation
+135,Election 33 Vote Method,String,
+136,Election 33 Party,String,See Political Party Code documentation
+137,Election 34 Vote Method,String,
+138,Election 34 Party,String,See Political Party Code documentation
+139,Election 35 Vote Method,String,
+140,Election 35 Party,String,See Political Party Code documentation
+141,Election 36 Vote Method,String,
+142,Election 36 Party,String,See Political Party Code documentation
+143,Election 37 Vote Method,String,
+144,Election 37 Party,String,See Political Party Code documentation
+145,Election 38 Vote Method,String,
+146,Election 38 Party,String,See Political Party Code documentation
+147,Election 39 Vote Method,String,
+148,Election 39 Party,String,See Political Party Code documentation
+149,Election 40 Vote Method,String,
+150,Election 40 Party,String,See Political Party Code documentation
+151,Home Phone,String,
+152,County,String,County Name the voter is currently registered in.
+153,Mail Country,String,
