@@ -9,26 +9,53 @@ TODO:
 import os
 import pandas as pd
 from tqdm import tqdm
-import sys
 import json
 
+
+WITHHELD_DEMOGRAPHIC_FEATURES = set(
+    [
+        "Home Phone",
+        "Mail Country",
+        "ID Number",
+        "Title",
+        "Last Name",  # Theoretically, names could be used to deduce race and other demographic information,
+        "First Name",  # but the potential for stereotyping and bias is too high
+        "Middle Name",
+        "Suffix",
+        "Custom Data 1",
+        "House Number",
+        "House Number Suffix",
+        "Street Name",
+        "Apartment Number",
+        "Address Line 2",
+        "City",
+        "State",
+        "Zip",
+        "Mail Address 1",
+        "Mail Address 2",
+        "Mail City",
+        "Mail State",
+        "Mail Zip",
+        "Precint Code",
+        "Precint Split ID",
+        "County"  # Should probably be added back in, but need to encode text
+    ]
+)
 
 DIR_NAME = "PA Voter File 7_15_23"
 OUTPUT_DIR = "processed_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-
-# Strings which are unique to each type of file for each county
+# Strings which are unique in the title of each type of file for each county
 VOTER_FILE_STR = "FVE"
 ELECTION_MAP_STR = "Election Map"
 ZONE_CODES_STR = "Zone Codes"
 ZONE_TYPES_STR = "Zone Types"
 
-
 # Ensure the directory exists
 assert os.path.isdir(DIR_NAME), f"Directory {DIR_NAME} does not exist"
 
-columns = pd.read_csv(os.path.join(DIR_NAME, "column_mapping.csv"), header=0)
+columns_template = pd.read_csv(os.path.join(DIR_NAME, "column_mapping.csv"), header=0)
 
 # Retrieve all the counties
 counties: set[str] = set()
@@ -36,9 +63,8 @@ for file in sorted(os.listdir(DIR_NAME)):
     if file != "column_mapping.csv":
         counties.add(file.split(" ")[0])
 
-
 # Track the dates of elections, and their corresponding possible descriptions
-elections: dict[str, set[str]] = {}
+state_elections: dict[str, set[str]] = {}
 for file in os.listdir(DIR_NAME):
     if ELECTION_MAP_STR in file:
         election_map = pd.read_csv(
@@ -50,24 +76,59 @@ for file in os.listdir(DIR_NAME):
 
         # Check the date of the election
         for _, row in election_map.iterrows():
-            if row[3] not in elections:
-                elections[row[3]] = {row[2]}
+            if row[3] not in state_elections:
+                state_elections[row[3]] = {row[2]}
             else:
-                elections[row[3]].add(row[2])
+                state_elections[row[3]].add(row[2])
 
-# Cast sets to lists for json serialization
-for date in elections:
-    elections[date] = list(elections[date])
-
-json.dump(elections, open(os.path.join(OUTPUT_DIR, "elections.json"), "w"), indent=4)
+# Dump to a json file
+state_elections = {date: list(state_elections[date]) for date in state_elections}
+json.dump(
+    state_elections, open(os.path.join(OUTPUT_DIR, "elections.json"), "w"), indent=4
+)
 
 election_column_names = []
-for election in elections.keys():
-    election_column_names.append(f"{election} Party")
-    election_column_names.append(f"{election} Vote Method")
+for election in state_elections.keys():
+    election_column_names.append(f"Election {election} Presence")
+    election_column_names.append(f"Election {election} Party D")
+    election_column_names.append(f"Election {election} Party R")
+    election_column_names.append(f"Election {election} Party I")
+    election_column_names.append(f"Election {election} Voted")
+    election_column_names.append(f"Election {election} By Mail")
 
+# Only include up to the column named District 40
+raw_column_names = columns_template["Field Description"].tolist()
+demographic_columns = [
+    col
+    for col in raw_column_names
+    if "Election" not in col
+    and "District" not in col
+    and col not in WITHHELD_DEMOGRAPHIC_FEATURES
+]
 
-for county in tqdm(sorted(counties), desc="Processing counties", unit="county", colour="green"):
+# Here, include other custom feature changes
+demographic_columns.remove("Gender")
+demographic_columns.append("Gender M")
+demographic_columns.append("Gender F")
+demographic_columns.append("Gender U")
+
+demographic_columns.remove("Party Code")
+demographic_columns.append("Party D")
+demographic_columns.append("Party R")
+demographic_columns.append("Party I")
+
+demographic_columns.remove("Last Vote Date")
+demographic_columns.append("Last Vote Date Presence")
+demographic_columns.append("Last Vote Date")
+
+all_column_names = demographic_columns + election_column_names
+
+all_dataframes = []
+
+for county in tqdm(
+    sorted(counties), desc="Processing counties", unit="county", colour="green"
+):
+    # region Load the data
     voter_data = election_map = zone_codes = zone_types = None
     for file in os.listdir(DIR_NAME):
         if county in file and VOTER_FILE_STR in file:
@@ -87,11 +148,15 @@ for county in tqdm(sorted(counties), desc="Processing counties", unit="county", 
             )
 
             # Map the election number to a date in the elections
-            election_mapping = {}
+            county_elections = {}
             for _, row in election_map.iterrows():
                 date = row[3]
-                if date in elections:
-                    election_mapping[row[1]] = date
+                if date in state_elections:
+                    county_elections[row[1]] = date
+                else:
+                    print(
+                        f"Skipping election {row[1]} in county {county} due to missing data"
+                    )
 
         if county in file and ZONE_CODES_STR in file:
             zone_codes = pd.read_csv(
@@ -99,7 +164,6 @@ for county in tqdm(sorted(counties), desc="Processing counties", unit="county", 
                 sep="\t",
                 encoding="unicode_escape",
                 header=None,
-
             )
         if county in file and ZONE_TYPES_STR in file:
             zone_types = pd.read_csv(
@@ -109,53 +173,157 @@ for county in tqdm(sorted(counties), desc="Processing counties", unit="county", 
                 header=None,
             )
 
-    if voter_data is None or election_mapping is None:
+    if voter_data is None or county_elections is None:
         print(f"Skipping county {county} due to missing data")
         continue
+    # endregion
 
-    # Modify the column names for this county
-    column_names = columns["Field Description"].copy()
+    voter_data.columns = columns_template["Field Description"].tolist()
 
-    column_rename_map = {}
+    aligned_voter_data = pd.DataFrame(columns=all_column_names)
 
-    # Replace election column names with the actual election names
-    for i, name in enumerate(column_names):
-        if "Election" in name:
-            election_number = int(name.split(" ")[1])
-            if election_number in election_mapping:
-                column_rename_map[i] = election_mapping[election_number] + (" Vote Method" if "Vote Method" in name else " Party")
-            else:
-                continue
+    # region Migrate the demographic columns
+    for col in voter_data.columns:
+        # Ignore the election columns
+        if "Election" in col:
+            continue
+
+        elif col == "Gender":
+            aligned_voter_data["Gender M"] = (voter_data[col] == "M").astype(int)
+            aligned_voter_data["Gender F"] = (voter_data[col] == "F").astype(int)
+            aligned_voter_data["Gender U"] = (~voter_data[col].isin(["M", "F"])).astype(
+                int
+            )
+
+        elif col == "Party Code":
+            aligned_voter_data["Party D"] = (voter_data[col] == "D").astype(int)
+            aligned_voter_data["Party R"] = (voter_data[col] == "R").astype(int)
+            aligned_voter_data["Party I"] = (~voter_data[col].isin(["D", "R"])).astype(
+                int
+            )
+
+        # Scale all dates to 0-1 (using 1900 to today as range)
+        elif col in [
+            "DOB",
+            "Registration Date",
+            "Status Change Date",
+            "Date Last Changed",
+        ]:
+            date = pd.to_datetime(voter_data[col], errors="coerce", format="%m/%d/%Y")
+            today = pd.to_datetime("today")
+            start_date = pd.to_datetime("1900-01-01")
+
+            # If date is before start or after today, set to start or today
+            date = date.where(date > start_date, start_date)
+            date = date.where(date < today, today)
+
+            # In these columns, there are very few missing values, so we can just fill them with the start date
+            date = date.fillna(start_date)
+
+            aligned_voter_data[col] = round((date - start_date) / (today - start_date), 3)
+
+        # Scale all dates (which may or may not exist) to 0-1
+        elif col == "Last Vote Date":
+            date = pd.to_datetime(voter_data[col], errors="coerce", format="%m/%d/%Y")
+            today = pd.to_datetime("today")
+            start_date = pd.to_datetime("1900-01-01")
+
+            # If date is before start or after today, set to start or today
+            date = date.where(date > start_date, start_date)
+            date = date.where(date < today, today)
+
+            aligned_voter_data["Last Vote Date Presence"] = (~date.isna()).astype(int)
+
+            date = date.fillna(start_date)
+
+            aligned_voter_data["Last Vote Date"] = round((date - start_date) / (today - start_date), 3)
+
+        elif col == "Voter Status":
+            aligned_voter_data[col] = (voter_data[col] == "A").astype(int)
+
+        # Migrate the non-custom columns
+        elif col in all_column_names:
+            aligned_voter_data[col] = voter_data[col]
+
+        elif col in WITHHELD_DEMOGRAPHIC_FEATURES or "District" in col:
+            continue
+
         else:
-            column_rename_map[i] = name
+            print(f"Found a missing column {col} in county {county}")
+            aligned_voter_data[col] = None
+    # endregion
 
-    voter_data.rename(columns=column_rename_map, inplace=True)
+    added_dates: set[str] = set()
 
-    columns_to_drop = set(range(len(column_names))) - set(column_rename_map.keys())
+    # region Migrate the election columns
+    for index, election_date in county_elections.items():
+        if election_date in added_dates:
+            # This election was already added, so merge the features with the existing ones
+            aligned_voter_data[
+                f"Election {election_date} Party D"
+            ] = aligned_voter_data[f"Election {election_date} Party D"].combine_first(
+                voter_data[f"Election {index} Party"] == "D"
+            )
+            aligned_voter_data[
+                f"Election {election_date} Party R"
+            ] = aligned_voter_data[f"Election {election_date} Party R"].combine_first(
+                voter_data[f"Election {index} Party"] == "R"
+            )
+            aligned_voter_data[
+                f"Election {election_date} Party I"
+            ] = aligned_voter_data[f"Election {election_date} Party I"].combine_first(
+                ~voter_data[f"Election {index} Party"].isin(["D", "R"])
+            )
+            aligned_voter_data[f"Election {election_date} Voted"] = aligned_voter_data[
+                f"Election {election_date} Voted"
+            ].combine_first(
+                voter_data[f"Election {index} Vote Method"]
+                .isin(["AP", "MB", "AB", "P"])
+                .astype(int)
+            )
+            aligned_voter_data[
+                f"Election {election_date} By Mail"
+            ] = aligned_voter_data[f"Election {election_date} By Mail"].combine_first(
+                voter_data[f"Election {index} Vote Method"]
+                .isin(["MB", "AB"])
+                .astype(int)
+            )
+            continue
 
-    voter_data.drop(voter_data.columns[list(columns_to_drop)], axis=1, inplace=True)
+        aligned_voter_data[f"Election {election_date} Party D"] = (
+            voter_data[f"Election {index} Party"] == "D"
+        ).astype(int)
+        aligned_voter_data[f"Election {election_date} Party R"] = (
+            voter_data[f"Election {index} Party"] == "R"
+        ).astype(int)
+        aligned_voter_data[f"Election {election_date} Party I"] = (
+            ~voter_data[f"Election {index} Party"].isin(["D", "R"])
+        ).astype(int)
+        aligned_voter_data[f"Election {election_date} Voted"] = (
+            voter_data[f"Election {index} Vote Method"]
+            .isin(["AP", "MB", "AB", "P"])
+            .astype(int)
+        )
+        aligned_voter_data[f"Election {election_date} By Mail"] = (
+            voter_data[f"Election {index} Vote Method"].isin(["MB", "AB"]).astype(int)
+        )
+        aligned_voter_data[f"Election {election_date} Presence"] = 1
 
-    # # Set the column names
-    # voter_data.columns = column_names
+        added_dates.add(election_date)
+    # endregion
 
-    # Drop the columns which are None
-    # voter_data.dropna(axis=1, inplace=True)
-
-    if len(set(voter_data.columns)) != len(voter_data.columns):
-        print(f"Non-unique columns in {county}")
-        column_counts = voter_data.columns.value_counts()
-        print(column_counts[column_counts > 1])
+    # For all the elections that are not present, set the presence to 0
+    for election_date in state_elections.keys():
+        if election_date not in added_dates:
+            aligned_voter_data[f"Election {election_date} Presence"] = 0
 
     # Save the csv
-    voter_data.to_csv(f"{OUTPUT_DIR}/{county}_voter_data.csv", index=False)
+    aligned_voter_data.to_csv(f"{OUTPUT_DIR}/{county}_voter_data.csv", index=False)
 
-    # all_dataframes.append(voter_data)
+    all_dataframes.append(voter_data)
 
 
-# full_state_data = pd.concat(all_dataframes, axis=0, ignore_index=True, sort=False)
+full_state_data = pd.concat(all_dataframes, axis=0, ignore_index=True, sort=False)
 
 # Save the data
-# full_state_data.to_csv("pa_voter_data.csv", index=False)
-
-# Check for duplicate voter IDs
-# assert len(full_state_data["ID Number"].unique()) == len(full_state_data), "Duplicate voter IDs"
+full_state_data.to_csv("pa_voter_data.csv", index=False)
