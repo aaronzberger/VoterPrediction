@@ -1,50 +1,17 @@
-"""
-TODO:
-    - [ ] Figure out how to align features across different counties: they have different elections, but the major ones are the same
-    - [ ] Within some counties like Allegheny, there are three separate elections on the same date (likely disjoint subsets of the voters voted in each, like special elections).
-          Figure out how to handle this (likely by combining them into a single election).
-    - [ ] Figure out how to ensure that the non-election features are constant across counties
-"""
-
 import os
 import pandas as pd
 from tqdm import tqdm
 import json
-
-
-WITHHELD_DEMOGRAPHIC_FEATURES = set(
-    [
-        "Home Phone",
-        "Mail Country",
-        "ID Number",
-        "Title",
-        "Last Name",  # Theoretically, names could be used to deduce race and other demographic information,
-        "First Name",  # but the potential for stereotyping and bias is too high
-        "Middle Name",
-        "Suffix",
-        "Custom Data 1",
-        "House Number",
-        "House Number Suffix",
-        "Street Name",
-        "Apartment Number",
-        "Address Line 2",
-        "City",
-        "State",
-        "Zip",
-        "Mail Address 1",
-        "Mail Address 2",
-        "Mail City",
-        "Mail State",
-        "Mail Zip",
-        "Precint Code",
-        "Precint Split ID",
-        "County"  # Should probably be added back in, but need to encode text
-    ]
+from config import (
+    WITHHELD_DEMOGRAPHIC_FEATURES,
+    PROCESSED_DATA_DIR,
+    VOTER_FILE_DIR,
+    VOTER_FILE_COLUMN_MAPPING_FILE,
+    ELECTION_DATES_TO_NAMES_MAPPING_FILE,
+    FEATURES_FILE,
+    election_date_to_feature_names
 )
 
-DIR_NAME = "PA Voter File 7_15_23"
-OUTPUT_DIR = "processed_data"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Strings which are unique in the title of each type of file for each county
 VOTER_FILE_STR = "FVE"
@@ -52,23 +19,20 @@ ELECTION_MAP_STR = "Election Map"
 ZONE_CODES_STR = "Zone Codes"
 ZONE_TYPES_STR = "Zone Types"
 
-# Ensure the directory exists
-assert os.path.isdir(DIR_NAME), f"Directory {DIR_NAME} does not exist"
-
-columns_template = pd.read_csv(os.path.join(DIR_NAME, "column_mapping.csv"), header=0)
+columns_template = pd.read_csv(VOTER_FILE_COLUMN_MAPPING_FILE, header=0)
 
 # Retrieve all the counties
 counties: set[str] = set()
-for file in sorted(os.listdir(DIR_NAME)):
-    if file != "column_mapping.csv":
+for file in sorted(os.listdir(VOTER_FILE_DIR)):
+    if VOTER_FILE_STR in file:
         counties.add(file.split(" ")[0])
 
 # Track the dates of elections, and their corresponding possible descriptions
 state_elections: dict[str, set[str]] = {}
-for file in os.listdir(DIR_NAME):
+for file in os.listdir(VOTER_FILE_DIR):
     if ELECTION_MAP_STR in file:
         election_map = pd.read_csv(
-            os.path.join(DIR_NAME, file),
+            os.path.join(VOTER_FILE_DIR, file),
             sep="\t",
             encoding="unicode_escape",
             header=None,
@@ -84,17 +48,14 @@ for file in os.listdir(DIR_NAME):
 # Dump to a json file
 state_elections = {date: list(state_elections[date]) for date in state_elections}
 json.dump(
-    state_elections, open(os.path.join(OUTPUT_DIR, "elections.json"), "w"), indent=4
+    state_elections,
+    open(ELECTION_DATES_TO_NAMES_MAPPING_FILE, "w"),
+    indent=4,
 )
 
 election_column_names = []
 for election in state_elections.keys():
-    election_column_names.append(f"Election {election} Presence")
-    election_column_names.append(f"Election {election} Party D")
-    election_column_names.append(f"Election {election} Party R")
-    election_column_names.append(f"Election {election} Party I")
-    election_column_names.append(f"Election {election} Voted")
-    election_column_names.append(f"Election {election} By Mail")
+    election_column_names.extend(election_date_to_feature_names(election))
 
 # Only include up to the column named District 40
 raw_column_names = columns_template["Field Description"].tolist()
@@ -121,6 +82,16 @@ demographic_columns.remove("Last Vote Date")
 demographic_columns.append("Last Vote Date Presence")
 demographic_columns.append("Last Vote Date")
 
+with open(FEATURES_FILE, "w") as f:
+    json.dump(
+        {
+            "demographic": demographic_columns,
+            "elections": election_column_names,
+        },
+        f,
+        indent=4,
+    )
+
 all_column_names = demographic_columns + election_column_names
 
 all_dataframes = []
@@ -130,10 +101,10 @@ for county in tqdm(
 ):
     # region Load the data
     voter_data = election_map = zone_codes = zone_types = None
-    for file in os.listdir(DIR_NAME):
+    for file in os.listdir(VOTER_FILE_DIR):
         if county in file and VOTER_FILE_STR in file:
             voter_data = pd.read_csv(
-                os.path.join(DIR_NAME, file),
+                os.path.join(VOTER_FILE_DIR, file),
                 sep="\t",
                 encoding="unicode_escape",
                 header=None,
@@ -141,7 +112,7 @@ for county in tqdm(
             )
         if county in file and ELECTION_MAP_STR in file:
             election_map = pd.read_csv(
-                os.path.join(DIR_NAME, file),
+                os.path.join(VOTER_FILE_DIR, file),
                 sep="\t",
                 encoding="unicode_escape",
                 header=None,
@@ -160,14 +131,14 @@ for county in tqdm(
 
         if county in file and ZONE_CODES_STR in file:
             zone_codes = pd.read_csv(
-                os.path.join(DIR_NAME, file),
+                os.path.join(VOTER_FILE_DIR, file),
                 sep="\t",
                 encoding="unicode_escape",
                 header=None,
             )
         if county in file and ZONE_TYPES_STR in file:
             zone_types = pd.read_csv(
-                os.path.join(DIR_NAME, file),
+                os.path.join(VOTER_FILE_DIR, file),
                 sep="\t",
                 encoding="unicode_escape",
                 header=None,
@@ -220,7 +191,9 @@ for county in tqdm(
             # In these columns, there are very few missing values, so we can just fill them with the start date
             date = date.fillna(start_date)
 
-            aligned_voter_data[col] = round((date - start_date) / (today - start_date), 3)
+            aligned_voter_data[col] = round(
+                (date - start_date) / (today - start_date), 3
+            )
 
         # Scale all dates (which may or may not exist) to 0-1
         elif col == "Last Vote Date":
@@ -236,7 +209,9 @@ for county in tqdm(
 
             date = date.fillna(start_date)
 
-            aligned_voter_data["Last Vote Date"] = round((date - start_date) / (today - start_date), 3)
+            aligned_voter_data["Last Vote Date"] = round(
+                (date - start_date) / (today - start_date), 3
+            )
 
         elif col == "Voter Status":
             aligned_voter_data[col] = (voter_data[col] == "A").astype(int)
@@ -318,7 +293,9 @@ for county in tqdm(
             aligned_voter_data[f"Election {election_date} Presence"] = 0
 
     # Save the csv
-    aligned_voter_data.to_csv(f"{OUTPUT_DIR}/{county}_voter_data.csv", index=False)
+    aligned_voter_data.to_csv(
+        f"{PROCESSED_DATA_DIR}/{county}_voter_data.csv", index=False
+    )
 
     all_dataframes.append(voter_data)
 
