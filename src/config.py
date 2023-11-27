@@ -19,6 +19,7 @@ FEATURES_FILE = os.path.join(BASE_DIR, PROCESSED_DATA_DIR, "features.json")
 
 TEN_PCT_SAMPLE_FILE = os.path.join(BASE_DIR, PROCESSED_DATA_DIR, "sample_ten_pct.csv")
 MAJOR_ELECTIONS_DATES_FILE = os.path.join(BASE_DIR, "major_elections.json")
+SLIDING_WINDOW_FILE = os.path.join(BASE_DIR, "sliding_window.csv")
 
 WITHHELD_DEMOGRAPHIC_FEATURES = set(
     [
