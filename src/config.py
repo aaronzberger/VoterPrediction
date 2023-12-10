@@ -7,6 +7,12 @@ assert os.path.isdir(VOTER_FILE_DIR), f"Directory {VOTER_FILE_DIR} does not exis
 
 VOTER_FILE_COLUMN_MAPPING_FILE = os.path.join(BASE_DIR, VOTER_FILE_DIR, "column_mapping.csv")
 
+# Strings which are unique in the title of each type of file for each county
+VOTER_FILE_STR = "FVE"
+ELECTION_MAP_STR = "Election Map"
+ZONE_CODES_STR = "Zone Codes"
+ZONE_TYPES_STR = "Zone Types"
+
 ELECTION_DATES_TO_NAMES_MAPPING_FILE = os.path.join(
     BASE_DIR, "election_dates_to_names.json"
 )
