@@ -5,7 +5,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VOTER_FILE_DIR = os.path.join(BASE_DIR, "PA Voter File 7_15_23")
 assert os.path.isdir(VOTER_FILE_DIR), f"Directory {VOTER_FILE_DIR} does not exist"
 
-VOTER_FILE_COLUMN_MAPPING_FILE = os.path.join(BASE_DIR, VOTER_FILE_DIR, "column_mapping.csv")
+VOTER_FILE_COLUMN_MAPPING_FILE = os.path.join(
+    BASE_DIR, VOTER_FILE_DIR, "column_mapping.csv"
+)
 
 # Strings which are unique in the title of each type of file for each county
 VOTER_FILE_STR = "FVE"
