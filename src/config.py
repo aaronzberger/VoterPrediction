@@ -25,12 +25,6 @@ os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
 # Map type of feature to names of features (demographic, elections)
 FEATURES_FILE = os.path.join(BASE_DIR, "features.json")
 
-# Visualization paths
-VISUALIZATIONS_DIR = os.path.join(BASE_DIR, "viz")
-SLIDING_WINDOW_VIZ_FILE = os.path.join(VISUALIZATIONS_DIR, "sliding_window.png")
-
-print(SLIDING_WINDOW_VIZ_FILE)
-
 
 def model_name_to_pickle_file(model_name):
     os.makedirs(os.path.join(BASE_DIR, "src", "pkl"), exist_ok=True)
