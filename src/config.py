@@ -25,6 +25,12 @@ os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
 # Map type of feature to names of features (demographic, elections)
 FEATURES_FILE = os.path.join(BASE_DIR, "features.json")
 
+
+def model_name_to_pickle_file(model_name):
+    os.makedirs(os.path.join(BASE_DIR, "src", "pkl"), exist_ok=True)
+    return os.path.join(BASE_DIR, "src", "pkl", f"{model_name}.pkl")
+
+
 TEN_PCT_SAMPLE_FILE = os.path.join(BASE_DIR, PROCESSED_DATA_DIR, "sample_ten_pct.csv")
 MAJOR_ELECTIONS_DATES_FILE = os.path.join(BASE_DIR, "major_elections.json")
 SLIDING_WINDOW_FILE = os.path.join(BASE_DIR, "sliding_window.csv")
